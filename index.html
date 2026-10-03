@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>Word Pop</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Baloo+2:wght@600;800&family=Nunito:wght@500;700;800&display=swap">
+<style>
+/* Layout: one-screen phone game in a sticker-book look. Flat colour blocks, thick navy outlines, hard offset shadows.
+   One deliberate light look, so there is no dark variant. */
+:root{
+  --bg:#FFFFFF; --field:#BFD4FF; --ink:#14285A; --soft:#3F5488;
+  --pink:#FF8DC3; --pink-soft:#FFC7E1; --yellow:#FFD43B; --purple:#C9B6FF; --blue:#2F5BEA; --on-blue:#FFFFFF; --heart:#E0458F;
+  --display:"Baloo 2","Nunito",system-ui,sans-serif;
+  --body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-weight:500;font-size:17px;line-height:1.45;
+  display:flex;flex-direction:column;overflow:hidden;-webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+
+/* score bar */
+.hud{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;
+  font-variant-numeric:tabular-nums}
+.hud>div{border:3px solid var(--ink);border-radius:22px;padding:5px 16px 6px;min-width:84px;background:var(--bg);
+  box-shadow:inset -5px -6px 0 rgba(20,40,90,.13),inset 4px 4px 0 rgba(255,255,255,.7),3px 4px 0 var(--ink)}
+.hud>div:first-child{background:var(--yellow)}
+.hud>.mid{border:0;padding:0;text-align:center;box-shadow:none;background:none}
+.hud .right{text-align:right}
+.hud .lbl{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.hud .mid .lbl{color:var(--soft)}
+.hud .val{font-family:"Bagel Fat One",var(--display);font-weight:400;font-size:30px;line-height:1.05;display:block}
+.hud .mid .val{font-size:26px}
+.hearts{color:var(--heart);letter-spacing:2px}
+.hearts .gone{opacity:.22}
+
+/* play field */
+.field{position:relative;flex:1;min-height:0;overflow:hidden;background:var(--field);
+  border:3px solid var(--ink);border-radius:20px;margin:0 16px 16px}
+.rule{position:absolute;top:10px;left:0;right:0;text-align:center;font-size:15px;font-weight:800;
+  pointer-events:none;padding-inline:12px}
+.streak{position:absolute;bottom:14px;left:50%;translate:-50% 0;rotate:-2deg;white-space:nowrap;
+  font-family:var(--display);font-weight:800;font-size:19px;line-height:1;padding:8px 18px 4px;
+  background:var(--pink);border:3px solid var(--ink);border-radius:999px;pointer-events:none}
+.streak:empty{display:none}
+.bubble{position:absolute;left:0;top:0;border-radius:50%;border:3px solid var(--ink);padding:6px;
+  background-color:#EDF3FF;
+  background-image:radial-gradient(ellipse 20% 11% at 31% 20%,#FFFFFF 96%,transparent),radial-gradient(circle at 76% 24%,#FFFFFF 0 4%,transparent 4.6%);
+  box-shadow:inset -9px -11px 0 rgba(20,40,90,.13),inset 5px 6px 0 rgba(255,255,255,.7),4px 5px 0 var(--ink);
+  font-weight:800;font-size:19px;line-height:1.05;display:grid;place-items:center;text-align:center;will-change:transform}
+.bubble.pop{animation:pop .22s ease-out forwards;background-color:var(--yellow);box-shadow:inset -9px -11px 0 rgba(20,40,90,.13);pointer-events:none}
+.bubble.wrong{animation:fade .5s ease-out forwards;background-color:var(--purple);box-shadow:inset -9px -11px 0 rgba(20,40,90,.13);pointer-events:none}
+@keyframes pop{to{scale:1.45;opacity:0}}
+@keyframes fade{30%{scale:.9}to{scale:.8;opacity:0}}
+.note{position:absolute;left:0;top:0;white-space:nowrap;font-weight:800;font-size:15px;pointer-events:none;
+  padding:3px 12px;border-radius:999px;border:3px solid var(--ink);background:var(--bg);animation:rise 1.4s ease-out forwards}
+.note.good{background:var(--yellow)} .note.bad{background:var(--purple)}
+@keyframes rise{0%{opacity:0;translate:0 6px}15%{opacity:1}75%{opacity:1}100%{opacity:0;translate:0 -34px}}
+@media (prefers-reduced-motion: reduce){ .bubble.pop,.bubble.wrong{animation-duration:.01s} .note{animation:hold 1.4s forwards} }
+@keyframes hold{0%,85%{opacity:1}100%{opacity:0}}
+
+/* start and end screens */
+.screen{flex:1;min-height:0;overflow-y:auto;padding:22px 20px 28px;display:flex;flex-direction:column;
+  align-items:center;gap:16px}
+.screen>*{width:100%;max-width:440px;flex:none}
+.screen>h1{width:auto;align-self:flex-start;margin:0 0 6px 2px;font-family:"Bagel Fat One",var(--display);font-weight:400;
+  font-size:clamp(46px,15.5vw,72px);line-height:1.1;white-space:nowrap;letter-spacing:.01em;color:var(--pink);
+  -webkit-text-stroke:7px var(--ink);paint-order:stroke fill;text-shadow:5px 6px 0 var(--ink);rotate:-4deg}
+h2{font-family:var(--display);font-weight:800;font-size:18px;line-height:1.2;margin:0 0 6px}
+p{margin:0}
+ul{list-style:none;margin:0;padding:0}
+.modes{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:max-content;gap:12px;align-content:start}
+#start{gap:12px}
+#start .tip{font-size:14px;padding:8px 12px}
+#start .how li{font-size:14px}
+#start>.modes{flex:1 1 0;min-height:150px;overflow-y:auto;overscroll-behavior:contain;padding:10px 12px 12px 10px;
+  border:3px solid var(--ink);border-radius:18px;scrollbar-width:thin}
+#start>.modes:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.topics{font-family:var(--display);font-weight:800;font-size:17px;line-height:1;display:flex;justify-content:space-between;align-items:baseline;margin-bottom:-6px}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--soft)}
+.foot .quiet{font-size:13px;padding:6px 0 6px 8px;white-space:nowrap}
+@media (max-height:720px){
+  #start{gap:8px;padding-top:12px;padding-bottom:12px}
+  #start>h1{font-size:44px;margin-bottom:0}
+  #start>.modes{min-height:120px}
+  #start .tiplbl{display:none}
+  #start .go{min-height:54px;font-size:23px}
+}
+.topics span{font-family:var(--body);font-weight:700;font-size:13px;color:var(--soft)}
+.mode{background:var(--field);border:3px solid var(--ink);border-radius:14px;padding:8px 12px;text-align:left;
+  font-family:var(--display);font-weight:800;font-size:18px;line-height:1.15;min-height:68px}
+.mode:nth-child(4n+2),.mode:nth-child(4n+3){background:var(--pink-soft)}
+.mode small{display:block;font-family:var(--body);font-weight:500;font-size:14px;margin-top:2px}
+.mode[aria-pressed="true"]{background:var(--yellow);box-shadow:4px 4px 0 var(--ink)}
+.modes .mode:last-child:nth-child(odd){grid-column:1/-1}
+.tip{border:3px solid var(--ink);border-radius:14px;padding:10px 14px;font-size:15px;line-height:1.4}
+.tiplbl{display:block;font-family:var(--display);font-weight:800;font-size:17px;line-height:1.2}
+.how{display:flex;flex-direction:column;gap:8px}
+.how li{display:flex;gap:10px;align-items:baseline;font-size:15px}
+.chip{flex:none;font-weight:800;font-size:14px;padding:2px 10px;border-radius:999px;border:3px solid var(--ink);min-width:96px;text-align:center}
+.chip.good{background:var(--yellow)} .chip.bad{background:var(--purple)}
+.go{font-family:var(--display);font-weight:800;background:var(--blue);color:var(--on-blue);border:3px solid var(--ink);
+  border-radius:16px;padding:8px 24px 4px;font-size:26px;min-height:62px;box-shadow:5px 5px 0 var(--ink);max-width:435px}
+.go:active{translate:3px 3px;box-shadow:2px 2px 0 var(--ink)}
+.quiet{background:none;border:0;color:var(--soft);font-weight:700;text-decoration:underline;padding:8px;font-size:15px}
+.big{font-family:"Bagel Fat One",var(--display);font-weight:400;font-size:96px;line-height:1;text-align:center;color:var(--yellow);
+  -webkit-text-stroke:7px var(--ink);paint-order:stroke fill;text-shadow:5px 6px 0 var(--ink);font-variant-numeric:tabular-nums}
+.sub{text-align:center;color:var(--soft);font-weight:700}
+.review{border:3px solid var(--ink);border-radius:14px;padding:12px 14px;-webkit-user-select:text;user-select:text}
+.review li{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:2px solid var(--field)}
+.review li:first-child{border-top:0}
+.review b{font-weight:800}
+.review span{color:var(--soft);text-align:right}
+</style>
+</head>
+<body>
+
+<section class="screen" id="start">
+  <h1>Word Pop</h1>
+  <div class="topics">Topics <span>Scroll for more</span></div>
+  <div class="modes" id="modes" tabindex="0" aria-label="Topics"></div>
+  <div class="tip"><span class="tiplbl">Quick tip</span><p id="tip"></p></div>
+  <ul class="how">
+    <li><span class="chip good" id="goodChip"></span><span id="goodHelp"></span></li>
+    <li><span class="chip bad" id="badChip"></span><span id="badHelp"></span></li>
+  </ul>
+  <button class="go" id="startBtn" type="button">Start</button>
+  <div class="foot"><span>60 seconds · a mistake costs 5 seconds</span><button class="quiet" id="soundBtn" type="button">Sound: on</button></div>
+</section>
+
+<header class="hud" id="hud" hidden>
+  <div><span class="lbl">Score</span><span class="val" id="score">0</span></div>
+  <div class="mid"><span class="lbl">Mistakes</span><span class="val hearts" id="lives"></span></div>
+  <div class="right"><span class="lbl">Time</span><span class="val" id="time">60</span></div>
+</header>
+<main class="field" id="field" hidden>
+  <div class="rule" id="rule"></div>
+  <div class="streak" id="streak"></div>
+</main>
+
+<section class="screen" id="end" hidden>
+  <p class="sub" id="endTitle">Time's up!</p>
+  <div class="big" id="finalScore">0</div>
+  <p class="sub" id="endStats"></p>
+  <div class="review" id="wrongBox" hidden>
+    <h2 id="wrongTitle"></h2>
+    <ul id="wrongList"></ul>
+  </div>
+  <div class="review" id="missBox" hidden>
+    <h2 id="missTitle"></h2>
+    <ul id="missList"></ul>
+  </div>
+  <p class="sub" id="perfect" hidden>No mistakes. Fantastic work!</p>
+  <button class="go" id="againBtn" type="button">Play again</button>
+  <button class="quiet" id="menuBtn" type="button">Choose another game</button>
+</section>
+
+<script>
+(function(){
+  /* WORD LISTS. Each item is "word|note", items separated by ";".
+     "good" words are the ones to tap. The note appears when the word is tapped and on the review screen. */
+  function list(s){return s.split(";").map(function(p){var a=p.split("|");return {w:a[0],note:a[1]};});}
+  function pairs(s,label){return s.split(" ").map(function(p){var a=p.split(":");return {w:a[1],note:label+a[0]+" → "+a[1]};});}
+
+  var MODES=[
+   {id:"irregular",name:"Irregular verbs",sub:"Past simple",rule:"Tap the irregular past verbs",
+    goodChip:"went",goodHelp:"Irregular (go → went). Tap it to score.",
+    badChip:"walked",badHelp:"Regular (walk → walked). Don't tap it, or you lose 5 seconds.",
+    wrongTitle:"Regular verbs you tapped",missTitle:"Irregular verbs you missed",
+    good:pairs("go:went buy:bought catch:caught teach:taught think:thought bring:brought feel:felt keep:kept leave:left meet:met pay:paid say:said sell:sold send:sent sleep:slept spend:spent stand:stood tell:told understand:understood win:won write:wrote drive:drove eat:ate fall:fell fly:flew forget:forgot give:gave know:knew ride:rode run:ran see:saw sing:sang speak:spoke swim:swam take:took wear:wore begin:began break:broke choose:chose drink:drank find:found get:got hear:heard hold:held lose:lost make:made build:built grow:grew throw:threw hide:hid shake:shook steal:stole wake:woke become:became draw:drew fight:fought lend:lent mean:meant ring:rang sit:sat",""),
+    bad:pairs("walk:walked play:played want:wanted decide:decided stop:stopped try:tried study:studied visit:visited arrive:arrived open:opened listen:listened cook:cooked travel:travelled watch:watched need:needed help:helped carry:carried plan:planned enjoy:enjoyed finish:finished stay:stayed call:called ask:asked live:lived work:worked start:started move:moved change:changed happen:happened remember:remembered show:showed turn:turned wait:waited learn:learned agree:agreed worry:worried clean:cleaned dance:danced laugh:laughed smile:smiled answer:answered invite:invited","Regular: ")},
+
+   {id:"participles",name:"Past participles",sub:"have + ...",rule:"Tap the correct past participles",
+    goodChip:"written",goodHelp:"Correct (I have written). Tap it to score.",
+    badChip:"wrote",badHelp:"Wrong form or not a real word. Don't tap it.",
+    wrongTitle:"Wrong forms you tapped",missTitle:"Past participles you missed",
+    good:list("gone|go → went → gone;written|write → wrote → written;eaten|eat → ate → eaten;seen|see → saw → seen;done|do → did → done;taken|take → took → taken;given|give → gave → given;spoken|speak → spoke → spoken;broken|break → broke → broken;chosen|choose → chose → chosen;driven|drive → drove → driven;forgotten|forget → forgot → forgotten;known|know → knew → known;flown|fly → flew → flown;drunk|drink → drank → drunk;swum|swim → swam → swum;begun|begin → began → begun;sung|sing → sang → sung;worn|wear → wore → worn;fallen|fall → fell → fallen;been|be → was/were → been;grown|grow → grew → grown;stolen|steal → stole → stolen;ridden|ride → rode → ridden;hidden|hide → hid → hidden;thrown|throw → threw → thrown;woken|wake → woke → woken;shown|show → showed → shown;bought|buy → bought → bought;caught|catch → caught → caught;taught|teach → taught → taught;thought|think → thought → thought;brought|bring → brought → brought;felt|feel → felt → felt;kept|keep → kept → kept;left|leave → left → left;met|meet → met → met;paid|pay → paid → paid;said|say → said → said;sold|sell → sold → sold;sent|send → sent → sent;slept|sleep → slept → slept;spent|spend → spent → spent;stood|stand → stood → stood;told|tell → told → told;understood|understand → understood → understood;won|win → won → won;made|make → made → made;found|find → found → found;got|get → got → got;heard|hear → heard → heard;held|hold → held → held;lost|lose → lost → lost;built|build → built → built;had|have → had → had;come|come → came → come;become|become → became → become;run|run → ran → run;rung|ring → rang → rung;drawn|draw → drew → drawn;shaken|shake → shook → shaken"),
+    bad:list("went|I have gone;wrote|I have written;ate|I have eaten;saw|I have seen;did|I have done;took|I have taken;gave|I have given;spoke|I have spoken;broke|I have broken;chose|I have chosen;drove|I have driven;knew|I have known;flew|I have flown;drank|I have drunk;swam|I have swum;began|I have begun;sang|I have sung;wore|I have worn;fell|I have fallen;grew|I have grown;stole|I have stolen;rode|I have ridden;threw|I have thrown;goed|I have gone;eated|I have eaten;buyed|I have bought;thinked|I have thought;catched|I have caught;came|I have come;ran|I have run;rang|I have rung;drew|I have drawn;shook|I have shaken;hid|I have hidden;woke|I have woken;became|I have become;teached|I have taught;bringed|I have brought;falled|I have fallen;drived|I have driven")},
+
+   {id:"uncountable",name:"Uncountable nouns",sub:"some advice",rule:"Tap the uncountable nouns",
+    goodChip:"advice",goodHelp:"Uncountable (some advice). Tap it to score.",
+    badChip:"chair",badHelp:"Countable (a chair, two chairs). Don't tap it.",
+    wrongTitle:"Countable nouns you tapped",missTitle:"Uncountable nouns you missed",
+    good:list("advice|some advice;information|some information;furniture|some furniture;luggage|some luggage;homework|some homework;equipment|some equipment;traffic|a lot of traffic;news|some news;weather|good weather;money|some money;bread|some bread;rice|some rice;water|some water;music|some music;knowledge|a lot of knowledge;research|some research;progress|good progress;accommodation|some accommodation;rubbish|some rubbish;luck|good luck;fun|a lot of fun;software|some software;jewellery|some jewellery;scenery|beautiful scenery;electricity|some electricity;pasta|some pasta;sugar|some sugar;milk|some milk;health|good health;feedback|some feedback;evidence|some evidence;behaviour|good behaviour;clothing|some clothing;cash|some cash;butter|some butter;flour|some flour;salt|some salt;meat|some meat;petrol|some petrol;oil|some oil;air|fresh air;rain|a lot of rain;snow|a lot of snow;sunshine|a lot of sunshine;pollution|a lot of pollution;grammar|English grammar;vocabulary|a lot of vocabulary;housework|some housework;shopping|some shopping;parking|some parking;transport|public transport;permission|some permission;patience|a lot of patience;happiness|a lot of happiness;honesty|complete honesty;confidence|a lot of confidence;mail|some mail;machinery|some machinery;toothpaste|some toothpaste;soap|some soap;honey|some honey;cutlery|some cutlery;laughter|a lot of laughter;damage|some damage"),
+    bad:list("chair|a chair, two chairs;suitcase|a suitcase, two suitcases;job|a job, two jobs;idea|an idea, two ideas;journey|a journey, two journeys;car|a car, two cars;coin|a coin, two coins;song|a song, two songs;fact|a fact, two facts;bottle|a bottle, two bottles;apple|an apple, two apples;meal|a meal, two meals;table|a table, two tables;tool|a tool, two tools;book|a book, two books;trip|a trip, two trips;email|an email, two emails;problem|a problem, two problems;minute|a minute, two minutes;sandwich|a sandwich, two sandwiches;suggestion|a suggestion, two suggestions;question|a question, two questions;ticket|a ticket, two tickets;word|a word, two words;machine|a machine, two machines;bag|a bag, two bags;coat|a coat, two coats;dollar|a dollar, two dollars;lesson|a lesson, two lessons;mistake|a mistake, two mistakes;photo|a photo, two photos;holiday|a holiday, two holidays;shop|a shop, two shops;report|a report, two reports;message|a message, two messages;key|a key, two keys;cup|a cup, two cups;flight|a flight, two flights;bus|a bus, two buses;opinion|an opinion, two opinions")},
+
+   {id:"ing",name:"Verb + -ing",sub:"enjoy doing",rule:"Tap the verbs followed by -ing",
+    goodChip:"enjoy",goodHelp:"Followed by -ing (enjoy doing). Tap it to score.",
+    badChip:"want",badHelp:"Followed by to (want to do). Don't tap it.",
+    wrongTitle:"Verbs + to that you tapped",missTitle:"Verbs + -ing you missed",
+    good:list("enjoy|enjoy doing;avoid|avoid doing;finish|finish doing;mind|mind doing;suggest|suggest doing;keep|keep doing;practise|practise doing;consider|consider doing;miss|miss doing;imagine|imagine doing;give up|give up doing;risk|risk doing;recommend|recommend doing;deny|deny doing;admit|admit doing;fancy|fancy doing;can't stand|can't stand doing;feel like|feel like doing;look forward to|look forward to doing;put off|put off doing;dislike|dislike doing;postpone|postpone doing;delay|delay doing;involve|involve doing;mention|mention doing;discuss|discuss doing;appreciate|appreciate doing;can't help|can't help doing;be good at|be good at doing;be interested in|be interested in doing;think about|think about doing;dream of|dream of doing;insist on|insist on doing;apologise for|apologise for doing;be used to|be used to doing;carry on|carry on doing;keep on|keep on doing;succeed in|succeed in doing;be worried about|be worried about doing;be tired of|be tired of doing;spend time|spend time doing;have trouble|have trouble doing;it's worth|it's worth doing;resist|resist doing"),
+    bad:list("want|want to do;decide|decide to do;hope|hope to do;plan|plan to do;agree|agree to do;promise|promise to do;refuse|refuse to do;learn|learn to do;offer|offer to do;manage|manage to do;need|need to do;afford|afford to do;expect|expect to do;choose|choose to do;arrange|arrange to do;seem|seem to do;would like|would like to do;pretend|pretend to do;wait|wait to do;prepare|prepare to do;deserve|deserve to do;fail|fail to do;tend|tend to do;threaten|threaten to do;demand|demand to do;ask|ask to do;can't wait|can't wait to do;be able|be able to do;be ready|be ready to do;would love|would love to do;be happy|be happy to do;volunteer|volunteer to do;hesitate|hesitate to do;aim|aim to do;claim|claim to do;struggle|struggle to do")},
+
+   {id:"comparatives",name:"Comparatives",sub:"bigger, more careful",rule:"Tap the correct comparatives",
+    goodChip:"better",goodHelp:"Correct (good → better). Tap it to score.",
+    badChip:"more big",badHelp:"Wrong (it should be bigger). Don't tap it.",
+    wrongTitle:"Wrong forms you tapped",missTitle:"Correct forms you missed",
+    good:list("better|good → better;worse|bad → worse;bigger|big → bigger;happier|happy → happier;more expensive|expensive → more expensive;easier|easy → easier;further|far → further;more careful|careful → more careful;hotter|hot → hotter;more interesting|interesting → more interesting;cheaper|cheap → cheaper;busier|busy → busier;more modern|modern → more modern;thinner|thin → thinner;more boring|boring → more boring;friendlier|friendly → friendlier;safer|safe → safer;more tired|tired → more tired;taller|tall → taller;more useful|useful → more useful;smaller|small → smaller;larger|large → larger;older|old → older;newer|new → newer;faster|fast → faster;slower|slow → slower;longer|long → longer;shorter|short → shorter;stronger|strong → stronger;weaker|weak → weaker;richer|rich → richer;poorer|poor → poorer;colder|cold → colder;warmer|warm → warmer;nicer|nice → nicer;later|late → later;earlier|early → earlier;funnier|funny → funnier;luckier|lucky → luckier;healthier|healthy → healthier;noisier|noisy → noisier;dirtier|dirty → dirtier;heavier|heavy → heavier;prettier|pretty → prettier;lazier|lazy → lazier;sadder|sad → sadder;wetter|wet → wetter;fitter|fit → fitter;more beautiful|beautiful → more beautiful;more difficult|difficult → more difficult;more comfortable|comfortable → more comfortable;more popular|popular → more popular;more dangerous|dangerous → more dangerous;more important|important → more important;more famous|famous → more famous;more crowded|crowded → more crowded;more polluted|polluted → more polluted;more relaxed|relaxed → more relaxed;more confident|confident → more confident;more patient|patient → more patient;more exciting|exciting → more exciting;more helpful|helpful → more helpful"),
+    bad:list("gooder|Correct: better;badder|Correct: worse;biger|Correct: bigger;more happy|Correct: happier;expensiver|Correct: more expensive;more easy|Correct: easier;carefuller|Correct: more careful;hoter|Correct: hotter;more cheap|Correct: cheaper;more busy|Correct: busier;beautifuller|Correct: more beautiful;more big|Correct: bigger;more better|Correct: better;worser|Correct: worse;more tall|Correct: taller;boringer|Correct: more boring;more safe|Correct: safer;usefuller|Correct: more useful;more small|Correct: smaller;more old|Correct: older;more fast|Correct: faster;more long|Correct: longer;more strong|Correct: stronger;more cold|Correct: colder;more nice|Correct: nicer;funnyer|Correct: funnier;more funny|Correct: funnier;heavyer|Correct: heavier;luckyer|Correct: luckier;sader|Correct: sadder;weter|Correct: wetter;difficulter|Correct: more difficult;popularer|Correct: more popular;dangerouser|Correct: more dangerous;importanter|Correct: more important;famouser|Correct: more famous;more healthier|Correct: healthier;more faster|Correct: faster;more easier|Correct: easier;farer|Correct: further;more late|Correct: later")},
+
+   {id:"superlatives",name:"Superlatives",sub:"the biggest, the most",rule:"Tap the correct superlatives",
+    goodChip:"the best",goodHelp:"Correct (good → the best). Tap it to score.",
+    badChip:"the most big",badHelp:"Wrong (it should be the biggest). Don't tap it.",
+    wrongTitle:"Wrong forms you tapped",missTitle:"Correct forms you missed",
+    good:list("the best|good → the best;the worst|bad → the worst;the biggest|big → the biggest;the happiest|happy → the happiest;the easiest|easy → the easiest;the furthest|far → the furthest;the hottest|hot → the hottest;the cheapest|cheap → the cheapest;the busiest|busy → the busiest;the thinnest|thin → the thinnest;the friendliest|friendly → the friendliest;the safest|safe → the safest;the tallest|tall → the tallest;the smallest|small → the smallest;the largest|large → the largest;the oldest|old → the oldest;the newest|new → the newest;the fastest|fast → the fastest;the longest|long → the longest;the strongest|strong → the strongest;the richest|rich → the richest;the coldest|cold → the coldest;the nicest|nice → the nicest;the latest|late → the latest;the earliest|early → the earliest;the funniest|funny → the funniest;the luckiest|lucky → the luckiest;the healthiest|healthy → the healthiest;the noisiest|noisy → the noisiest;the heaviest|heavy → the heaviest;the prettiest|pretty → the prettiest;the laziest|lazy → the laziest;the saddest|sad → the saddest;the wettest|wet → the wettest;the fittest|fit → the fittest;the least|little → the least;the most expensive|expensive → the most expensive;the most careful|careful → the most careful;the most interesting|interesting → the most interesting;the most modern|modern → the most modern;the most boring|boring → the most boring;the most useful|useful → the most useful;the most beautiful|beautiful → the most beautiful;the most difficult|difficult → the most difficult;the most comfortable|comfortable → the most comfortable;the most popular|popular → the most popular;the most dangerous|dangerous → the most dangerous;the most important|important → the most important;the most famous|famous → the most famous;the most crowded|crowded → the most crowded;the most relaxed|relaxed → the most relaxed;the most confident|confident → the most confident;the most patient|patient → the most patient;the most exciting|exciting → the most exciting;the most helpful|helpful → the most helpful"),
+    bad:list("the goodest|Correct: the best;the baddest|Correct: the worst;the most big|Correct: the biggest;the bigest|Correct: the biggest;the most happy|Correct: the happiest;the expensivest|Correct: the most expensive;the most easy|Correct: the easiest;the hotest|Correct: the hottest;the most cheap|Correct: the cheapest;the most busy|Correct: the busiest;the beautifullest|Correct: the most beautiful;the most best|Correct: the best;the worstest|Correct: the worst;the most tall|Correct: the tallest;the boringest|Correct: the most boring;the most safe|Correct: the safest;the usefullest|Correct: the most useful;the most small|Correct: the smallest;the most old|Correct: the oldest;the most fast|Correct: the fastest;the funnyest|Correct: the funniest;the heavyest|Correct: the heaviest;the sadest|Correct: the saddest;the difficultest|Correct: the most difficult;the dangerousest|Correct: the most dangerous;the importantest|Correct: the most important;the most healthiest|Correct: the healthiest;the most fastest|Correct: the fastest;the most easiest|Correct: the easiest;the farest|Correct: the furthest;the most nice|Correct: the nicest;the most long|Correct: the longest;the luckyest|Correct: the luckiest;the famousest|Correct: the most famous;the most cold|Correct: the coldest;the most strong|Correct: the strongest")},
+
+   {id:"makedo",name:"Make or do",sub:"make a mistake",rule:"Tap the words that go with MAKE",
+    goodChip:"a mistake",goodHelp:"Goes with make (make a mistake). Tap it to score.",
+    badChip:"homework",badHelp:"Goes with do (do homework). Don't tap it.",
+    wrongTitle:"Words with do that you tapped",missTitle:"Words with make you missed",
+    good:list("a mistake|make a mistake;a decision|make a decision;friends|make friends;a phone call|make a phone call;an appointment|make an appointment;a noise|make a noise;money|make money;a plan|make a plan;an effort|make an effort;a suggestion|make a suggestion;progress|make progress;a mess|make a mess;a list|make a list;breakfast|make breakfast;dinner|make dinner;a cake|make a cake;a cup of tea|make a cup of tea;a promise|make a promise;a choice|make a choice;a difference|make a difference;an excuse|make an excuse;a complaint|make a complaint;a comment|make a comment;a speech|make a speech;a reservation|make a reservation;a booking|make a booking;a profit|make a profit;a joke|make a joke;a change|make a change;a living|make a living;an offer|make an offer;a sandwich|make a sandwich;a start|make a start;sure|make sure;sense|make sense;a point|make a point;an impression|make an impression;a discovery|make a discovery;a fortune|make a fortune;an exception|make an exception;arrangements|make arrangements;a prediction|make a prediction;a guess|make a guess;a request|make a request;coffee|make coffee;lunch|make lunch;a fire|make a fire;a film|make a film;a copy|make a copy;the bed|make the bed;peace|make peace;a fuss|make a fuss;an attempt|make an attempt;contact|make contact;time for it|make time for it"),
+    bad:list("homework|do homework;the shopping|do the shopping;your best|do your best;the dishes|do the dishes;the housework|do the housework;exercise|do exercise;a course|do a course;business|do business;a favour|do a favour;the washing|do the washing;the ironing|do the ironing;the cleaning|do the cleaning;research|do research;an exam|do an exam;a test|do a test;a job|do a job;yoga|do yoga;sport|do sport;nothing|do nothing;something|do something;well|do well;badly|do badly;damage|do damage;your hair|do your hair;the cooking|do the cooking;a degree|do a degree;an experiment|do an experiment;a project|do a project;the gardening|do the gardening;overtime|do overtime;a puzzle|do a puzzle;harm|do harm;a crossword|do a crossword;the laundry|do the laundry;your duty|do your duty;work|do work;an exercise|do an exercise;the vacuuming|do the vacuuming;a good job|do a good job;karate|do karate")},
+
+   {id:"inat",name:"In or at",sub:"in July, at night",rule:"Tap the words that go with IN",
+    goodChip:"July",goodHelp:"Goes with in (in July). Tap it to score.",
+    badChip:"night",badHelp:"Goes with at (at night). Don't tap it.",
+    wrongTitle:"Words with at that you tapped",missTitle:"Words with in you missed",
+    good:list("July|in July;the morning|in the morning;2019|in 2019;summer|in summer;the afternoon|in the afternoon;the evening|in the evening;winter|in winter;spring|in spring;autumn|in autumn;the 1990s|in the 1990s;the 21st century|in the 21st century;January|in January;December|in December;the past|in the past;the future|in the future;a few minutes|in a few minutes;two weeks|in two weeks;Australia|in Australia;Sydney|in Sydney;the kitchen|in the kitchen;the car|in the car;bed|in bed;hospital|in hospital;the city|in the city;the country|in the country;a taxi|in a taxi;the park|in the park;the garden|in the garden;the world|in the world;the sky|in the sky;the newspaper|in the newspaper;the photo|in the photo;the middle|in the middle;my pocket|in my pocket;class|in class;the mountains|in the mountains;a village|in a village;my room|in my room;the bath|in the bath;a hurry|in a hurry;love|in love;trouble|in trouble;the rain|in the rain;a book|in a book;the north|in the north;the living room|in the living room;a box|in a box;my bag|in my bag;the water|in the water;the fridge|in the fridge"),
+    bad:list("night|at night;5 o'clock|at 5 o'clock;midnight|at midnight;noon|at noon;midday|at midday;lunchtime|at lunchtime;the moment|at the moment;the same time|at the same time;sunrise|at sunrise;sunset|at sunset;Christmas|at Christmas;Easter|at Easter;bedtime|at bedtime;the end of the day|at the end of the day;half past six|at half past six;the age of 20|at the age of 20;first|at first;last|at last;least|at least;home|at home;work|at work;school|at school;university|at university;the bus stop|at the bus stop;the station|at the station;the airport|at the airport;the door|at the door;the traffic lights|at the traffic lights;the top of the page|at the top of the page;the bottom of the page|at the bottom of the page;a party|at a party;a concert|at a concert;the cinema|at the cinema;reception|at reception;the entrance|at the entrance;the front desk|at the front desk;a wedding|at a wedding;present|at present;once|at once;the dentist's|at the dentist's;my friend's house|at my friend's house;10 Smith Street|at 10 Smith Street;the checkout|at the checkout;the gym|at the gym;the table|at the table")},
+
+   {id:"silent",name:"Silent letters",sub:"knee, listen",rule:"Tap the words with a silent letter",
+    goodChip:"knee",goodHelp:"Silent k (we say nee). Tap it to score.",
+    badChip:"desk",badHelp:"Every letter is pronounced. Don't tap it.",
+    wrongTitle:"Words with no silent letter that you tapped",missTitle:"Silent letters you missed",
+    good:list("knee|silent k;know|silent k;knife|silent k;knock|silent k;knot|silent k;write|silent w;wrong|silent w;wrist|silent w;answer|silent w;two|silent w;sword|silent w;listen|silent t;castle|silent t;Christmas|silent t;whistle|silent t;fasten|silent t;island|silent s;climb|silent b;comb|silent b;thumb|silent b;lamb|silent b;doubt|silent b;debt|silent b;hour|silent h;honest|silent h;ghost|silent h;talk|silent l;walk|silent l;half|silent l;calm|silent l;could|silent l;would|silent l;should|silent l;salmon|silent l;daughter|silent gh;night|silent gh;light|silent gh;high|silent gh;eight|silent gh;sign|silent g;foreign|silent g;design|silent g;autumn|silent n;column|silent n;psychology|silent p;receipt|silent p;cupboard|silent p;Wednesday|silent d;sandwich|silent d;handsome|silent d;muscle|silent c;scissors|silent c;science|silent c;guess|silent u;guitar|silent u;building|silent u;biscuit|silent u"),
+    bad:list("desk|Every letter is pronounced;lamp|Every letter is pronounced;hand|Every letter is pronounced;stop|Every letter is pronounced;drink|Every letter is pronounced;plant|Every letter is pronounced;jump|Every letter is pronounced;bank|Every letter is pronounced;milk|Every letter is pronounced;help|Every letter is pronounced;film|Every letter is pronounced;golf|Every letter is pronounced;tent|Every letter is pronounced;trip|Every letter is pronounced;crisp|Every letter is pronounced;strong|Every letter is pronounced;spring|Every letter is pronounced;problem|Every letter is pronounced;hotel|Every letter is pronounced;habit|Every letter is pronounced;robot|Every letter is pronounced;visit|Every letter is pronounced;lemon|Every letter is pronounced;salad|Every letter is pronounced;melon|Every letter is pronounced;camel|Every letter is pronounced;basket|Every letter is pronounced;picnic|Every letter is pronounced;magnet|Every letter is pronounced;planet|Every letter is pronounced;seven|Every letter is pronounced;hundred|Every letter is pronounced;present|Every letter is pronounced;student|Every letter is pronounced;husband|Every letter is pronounced;dentist|Every letter is pronounced;sunset|Every letter is pronounced;trumpet|Every letter is pronounced;cabin|Every letter is pronounced;napkin|Every letter is pronounced;fantastic|Every letter is pronounced;adult|Every letter is pronounced;exit|Every letter is pronounced;frog|Every letter is pronounced;swim|Every letter is pronounced;flag|Every letter is pronounced;glad|Every letter is pronounced;best|Every letter is pronounced;next|Every letter is pronounced;himself|Every letter is pronounced;hospital|Every letter is pronounced")},
+
+   {id:"spelling",name:"Spelling",sub:"Correct or not?",rule:"Tap the words with correct spelling",
+    goodChip:"because",goodHelp:"Correct spelling. Tap it to score.",
+    badChip:"becuase",badHelp:"Wrong spelling. Don't tap it, or you lose 5 seconds.",
+    wrongTitle:"Wrong spellings you tapped",missTitle:"Correct spellings you missed",
+    good:list("because|Correct!;friend|Correct!;different|Correct!;beautiful|Correct!;necessary|Correct!;tomorrow|Correct!;definitely|Correct!;separate|Correct!;restaurant|Correct!;business|Correct!;interesting|Correct!;comfortable|Correct!;government|Correct!;address|Correct!;beginning|Correct!;believe|Correct!;receive|Correct!;which|Correct!;until|Correct!;really|Correct!;usually|Correct!;favourite|Correct!;neighbour|Correct!;embarrassed|Correct!;accommodation|Correct!;weird|Correct!;surprise|Correct!;Wednesday|Correct!;February|Correct!;successful|Correct!;environment|Correct!;language|Correct!;experience|Correct!;tonight|Correct!;writing|Correct!;foreign|Correct!;calendar|Correct!;grammar|Correct!;occasion|Correct!;possible|Correct!;recommend|Correct!;immediately|Correct!;independent|Correct!;knowledge|Correct!;library|Correct!;probably|Correct!;sincerely|Correct!;opportunity|Correct!;appointment|Correct!;excellent|Correct!;apartment|Correct!;across|Correct!;although|Correct!;answer|Correct!;daughter|Correct!;enough|Correct!;decision|Correct!;finally|Correct!;happened|Correct!;studying|Correct!"),
+    bad:list("becuase|Correct: because;freind|Correct: friend;diffrent|Correct: different;beatiful|Correct: beautiful;neccessary|Correct: necessary;tommorow|Correct: tomorrow;definately|Correct: definitely;seperate|Correct: separate;restaurent|Correct: restaurant;buisness|Correct: business;intresting|Correct: interesting;comfortible|Correct: comfortable;goverment|Correct: government;adress|Correct: address;begining|Correct: beginning;beleive|Correct: believe;recieve|Correct: receive;wich|Correct: which;untill|Correct: until;realy|Correct: really;usualy|Correct: usually;embarased|Correct: embarrassed;accomodation|Correct: accommodation;wierd|Correct: weird;suprise|Correct: surprise;Wensday|Correct: Wednesday;Febuary|Correct: February;succesful|Correct: successful;enviroment|Correct: environment;langauge|Correct: language;experiance|Correct: experience;tonite|Correct: tonight;writting|Correct: writing;foriegn|Correct: foreign;calender|Correct: calendar;grammer|Correct: grammar;ocassion|Correct: occasion;posible|Correct: possible;recomend|Correct: recommend;immediatly|Correct: immediately;independant|Correct: independent;knowlege|Correct: knowledge;libary|Correct: library;probaly|Correct: probably;sincerly|Correct: sincerely;oportunity|Correct: opportunity;apointment|Correct: appointment;excelent|Correct: excellent")}
+  ];
+  MODES.forEach(function(m){m.good.forEach(function(v){v.ok=true;});m.bad.forEach(function(v){v.ok=false;});});
+
+  /* GRAMMAR TIPS shown on the start screen, one for each game. */
+  var TIPS={
+    irregular:"Regular verbs add -ed in the past simple (walk → walked). Irregular verbs don't follow this rule, so you need to learn them (go → went).",
+    participles:"Use the past participle after have or has (I have eaten) and in the passive (It was written in 1990). Don't mix it up with the past simple: I wrote it yesterday, but I have written it.",
+    uncountable:"Uncountable nouns have no plural and you can't use a or an with them. Say some advice or a piece of advice, not an advice or advices. Use much, not many.",
+    ing:"When two verbs go together, the first verb decides the form of the second. Some verbs take -ing (I enjoy cooking). Others take to (I want to cook).",
+    comparatives:"Use comparatives to compare two things. Short adjectives add -er (cheaper, bigger). Long adjectives use more (more expensive). Adjectives ending in -y change to -ier (happier). Some are irregular: better, worse, further.",
+    superlatives:"Use superlatives to compare one thing with all the others in a group. Short adjectives add -est (the cheapest, the biggest). Long adjectives use the most (the most expensive). Adjectives ending in -y change to -iest (the happiest). Some are irregular: the best, the worst, the furthest.",
+    makedo:"Use make when you create or produce something (make a cake, make a plan, make a mistake). Use do for work, tasks and activities (do homework, do the dishes, do exercise). Many of these are fixed phrases, so you need to learn them.",
+    inat:"Use in for months, years, seasons and parts of the day (in July, in 2019, in the morning), and for being inside a place (in the kitchen, in Sydney). Use at for exact times (at 5 o'clock, at night) and for a point or an event (at the door, at a party).",
+    silent:"English spelling often keeps letters that we don't say. Common ones are k before n (knee), w before r (write), b after m (climb), l in could and walk, gh in night, and t in listen.",
+    spelling:"Watch out for double letters (address, accommodation), silent letters (Wednesday, which) and i before e (believe, friend), but e before i after c (receive)."
+  };
+  var ROUND=60, LIVES=3;
+  var $=function(id){return document.getElementById(id);};
+  var start=$("start"),hud=$("hud"),field=$("field"),end=$("end");
+  var mode=MODES[0];
+  var bubbles=[],deckG=[],deckB=[],score,lives,timeLeft,streak,bestStreak,hits,wrong,missed,running=false,last=0,spawnIn=0,lastLane=-1,elapsed=0;
+  var soundOn=true,ac=null;
+
+  function pick(id){
+    for(var i=0;i<MODES.length;i++)if(MODES[i].id===id)mode=MODES[i];
+    deckG=[];deckB=[];
+    Array.prototype.forEach.call($("modes").children,function(b){var on=b.dataset.id===mode.id;b.setAttribute("aria-pressed",String(on));if(on&&b.scrollIntoView)b.scrollIntoView({block:"nearest"});});
+    $("goodChip").textContent=mode.goodChip;$("goodHelp").textContent=mode.goodHelp;
+    $("badChip").textContent=mode.badChip;$("badHelp").textContent=mode.badHelp;
+    $("rule").textContent=mode.rule;
+    $("tip").textContent=TIPS[mode.id]||"";
+    $("wrongTitle").textContent=mode.wrongTitle;$("missTitle").textContent=mode.missTitle;
+    try{localStorage.setItem("wordpop-mode",mode.id);}catch(e){}
+  }
+  MODES.forEach(function(m){
+    var b=document.createElement("button");b.type="button";b.className="mode";b.dataset.id=m.id;
+    b.textContent=m.name;var s=document.createElement("small");s.textContent=m.sub;b.appendChild(s);
+    b.addEventListener("click",function(){pick(m.id);});
+    $("modes").appendChild(b);
+  });
+  // A link ending in #spelling (or any game id) opens that game directly.
+  var first=(location.hash||"").replace("#","");
+  if(!first){try{first=localStorage.getItem("wordpop-mode")||"";}catch(e){}}
+  pick(first||"irregular");
+
+  function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+  function draw(good){
+    if(good){if(!deckG.length)deckG=shuffle(mode.good);return deckG.pop();}
+    if(!deckB.length)deckB=shuffle(mode.bad);return deckB.pop();
+  }
+  function beep(freq,dur){
+    if(!soundOn)return;
+    try{
+      ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+      var o=ac.createOscillator(),g=ac.createGain();
+      o.frequency.setValueAtTime(freq,ac.currentTime);
+      o.frequency.exponentialRampToValueAtTime(freq*1.8,ac.currentTime+dur);
+      g.gain.setValueAtTime(.15,ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+dur);
+      o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+dur);
+    }catch(e){}
+  }
+  function showHud(){
+    $("score").textContent=score;
+    $("time").textContent=Math.max(0,Math.ceil(timeLeft));
+    $("lives").textContent=lives;
+    $("streak").textContent=streak>=3?"Streak ×"+streak:"";
+  }
+  function spawn(){
+    var W=field.clientWidth,H=field.clientHeight;
+    var v=draw(Math.random()<0.55);
+    var longest=v.w.split(" ").reduce(function(m,p){return Math.max(m,p.length);},0);
+    var lines=v.w.split(" ").length;
+    var d=Math.max(86,Math.min(140,longest*11+34+(lines-1)*14));
+    var lanes=Math.max(2,Math.floor(W/124)),lane;
+    do{lane=Math.floor(Math.random()*lanes);}while(lane===lastLane);
+    lastLane=lane;
+    var laneW=W/lanes,x=Math.max(4,Math.min(W-d-4,lane*laneW+(laneW-d)/2));
+    var el=document.createElement("button");
+    el.type="button";el.className="bubble";el.textContent=v.w;
+    el.style.width=el.style.height=d+"px";
+    if(longest>11)el.style.fontSize="15.5px";else if(longest>9||lines>1)el.style.fontSize="17px";
+    var b={el:el,v:v,x:x,y:H,d:d,phase:Math.random()*6.28,
+      speed:(H/7.5)*(1+elapsed/ROUND*0.7)*(0.9+Math.random()*0.25),dead:false};
+    el.addEventListener("pointerdown",function(e){e.preventDefault();tap(b);});
+    el.addEventListener("click",function(e){if(e.detail===0)tap(b);}); // keyboard
+    field.appendChild(el);bubbles.push(b);place(b);
+  }
+  function place(b){b.el.style.transform="translate("+(b.x+Math.sin(b.phase)*6)+"px,"+b.y+"px)";}
+  function note(b,text,cls){
+    var n=document.createElement("div");n.className="note "+cls;n.textContent=text;
+    field.appendChild(n);
+    var W=field.clientWidth,x=Math.max(6,Math.min(W-n.offsetWidth-6,b.x+b.d/2-n.offsetWidth/2));
+    n.style.left=x+"px";n.style.top=Math.max(34,b.y+b.d/2-16)+"px";
+    n.addEventListener("animationend",function(){n.remove();});
+  }
+  function kill(b,cls){
+    b.dead=true;b.el.classList.add(cls);
+    b.el.addEventListener("animationend",function(){b.el.remove();});
+  }
+  function tap(b){
+    if(!running||b.dead)return;
+    if(b.v.ok){
+      streak++;if(streak>bestStreak)bestStreak=streak;hits++;
+      var pts=10+Math.min(streak-1,10)*2;score+=pts;
+      kill(b,"pop");note(b,b.v.note+"  +"+pts,"good");beep(520,.09);
+    }else{
+      streak=0;lives++;timeLeft-=5;
+      if(wrong.indexOf(b.v)<0)wrong.push(b.v);
+      kill(b,"wrong");note(b,b.v.note+"  −5 s","bad");beep(170,.18);
+    }
+    showHud();
+  }
+  function frame(t){
+    if(!running)return;
+    var dt=Math.min(0.05,(t-last)/1000);last=t;
+    elapsed+=dt;timeLeft-=dt;
+    spawnIn-=dt;
+    if(spawnIn<=0){spawn();spawnIn=Math.max(0.5,1.05-elapsed/ROUND*0.5);}
+    for(var i=bubbles.length-1;i>=0;i--){
+      var b=bubbles[i];
+      if(b.dead){bubbles.splice(i,1);continue;}
+      b.y-=b.speed*dt;b.phase+=dt*2;
+      if(b.y<-b.d){
+        if(b.v.ok){if(missed.indexOf(b.v)<0)missed.push(b.v);streak=0;}
+        b.el.remove();bubbles.splice(i,1);continue;
+      }
+      place(b);
+    }
+    if(timeLeft<=0){timeLeft=0;showHud();finish(true);return;}
+    showHud();
+    requestAnimationFrame(frame);
+  }
+  function clearField(){
+    bubbles=[];
+    Array.prototype.slice.call(field.querySelectorAll(".bubble,.note")).forEach(function(n){n.remove();});
+  }
+  function begin(){
+    score=0;lives=0;timeLeft=ROUND;streak=0;bestStreak=0;hits=0;wrong=[];missed=[];elapsed=0;spawnIn=0.3;
+    clearField();
+    start.hidden=true;end.hidden=true;hud.hidden=false;field.hidden=false;
+    showHud();running=true;
+    requestAnimationFrame(function(t){last=t;requestAnimationFrame(frame);});
+  }
+  function fill(el,items){
+    el.innerHTML="";
+    items.forEach(function(v){
+      var li=document.createElement("li"),b=document.createElement("b"),s=document.createElement("span");
+      b.textContent=v.w;s.textContent=v.note==="Correct!"?"correct spelling":v.note;
+      li.appendChild(b);li.appendChild(s);el.appendChild(li);
+    });
+  }
+  function finish(timeUp){
+    running=false;
+    var key="wordpop-best-"+mode.id,best=0;
+    try{best=parseInt(localStorage.getItem(key)||"0",10)||0;if(score>best)localStorage.setItem(key,String(score));}catch(e){}
+    setTimeout(function(){
+      hud.hidden=true;field.hidden=true;end.hidden=false;end.scrollTop=0;
+      $("endTitle").textContent=mode.name+" · "+"Time's up!";
+      $("finalScore").textContent=score;
+      $("endStats").textContent=lives+(lives===1?" mistake":" mistakes")+" · "+hits+" correct pops · best streak "+bestStreak+
+        (score>best&&best>0?" · new best score!":(best>0?" · your best: "+Math.max(best,score):""));
+      $("wrongBox").hidden=!wrong.length;$("missBox").hidden=!missed.length;
+      $("perfect").hidden=!!(wrong.length||missed.length);
+      fill($("wrongList"),wrong);fill($("missList"),missed);
+    },timeUp?250:700);
+  }
+  $("startBtn").addEventListener("click",begin);
+  $("againBtn").addEventListener("click",begin);
+  $("menuBtn").addEventListener("click",function(){clearField();end.hidden=true;start.hidden=false;start.scrollTop=0;});
+  $("soundBtn").addEventListener("click",function(){
+    soundOn=!soundOn;this.textContent="Sound: "+(soundOn?"on":"off");
+  });
+})();
+</script>
+
+</body>
+</html>
