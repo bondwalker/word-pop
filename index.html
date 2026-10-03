@@ -46,7 +46,10 @@ button:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
 /* play field */
 .field{position:relative;flex:1;min-height:0;overflow:hidden;background:var(--field);
   border:3px solid var(--ink);border-radius:20px;margin:0 16px 16px}
-.rule{position:absolute;top:10px;left:0;right:0;text-align:center;font-size:15px;font-weight:800;
+.exit{position:absolute;top:8px;right:8px;z-index:5;min-height:44px;padding:4px 16px;font-weight:800;font-size:15px;
+  background:var(--bg);border:3px solid var(--ink);border-radius:999px;box-shadow:2px 3px 0 var(--ink)}
+.exit:active{translate:2px 2px;box-shadow:none}
+.rule{position:absolute;top:19px;left:2px;right:84px;text-align:left;font-size:15px;font-weight:800;
   pointer-events:none;padding-inline:12px}
 .streak{position:absolute;bottom:14px;left:50%;translate:-50% 0;rotate:-2deg;white-space:nowrap;
   font-family:var(--display);font-weight:800;font-size:19px;line-height:1;padding:8px 18px 4px;
@@ -147,7 +150,8 @@ ul{list-style:none;margin:0;padding:0}
   .hud .val{font-size:40px}
   .hud .mid .val{font-size:34px}
   .field{margin:0 32px 24px}
-  .rule{font-size:19px;top:14px}
+  .rule{font-size:19px;top:22px;left:10px;right:130px}
+  .exit{top:12px;right:12px;font-size:18px;padding:6px 24px;min-height:50px}
   .streak{font-size:24px}
   .note{font-size:18px}
 }
@@ -175,6 +179,7 @@ ul{list-style:none;margin:0;padding:0}
 </header>
 <main class="field" id="field" hidden>
   <div class="rule" id="rule"></div>
+  <button class="exit" id="exitBtn" type="button">Exit</button>
   <div class="streak" id="streak"></div>
 </main>
 
@@ -440,6 +445,10 @@ ul{list-style:none;margin:0;padding:0}
       fill($("wrongList"),wrong);fill($("missList"),missed);
     },timeUp?250:700);
   }
+  $("exitBtn").addEventListener("click",function(){
+    if(!running)return;
+    running=false;clearField();hud.hidden=true;field.hidden=true;end.hidden=true;start.hidden=false;start.scrollTop=0;
+  });
   $("startBtn").addEventListener("click",begin);
   $("againBtn").addEventListener("click",begin);
   $("menuBtn").addEventListener("click",function(){clearField();end.hidden=true;start.hidden=false;start.scrollTop=0;});
