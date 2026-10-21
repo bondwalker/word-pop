@@ -75,6 +75,11 @@ button:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
 .screen{flex:1;min-height:0;overflow-y:auto;padding:22px 20px 28px;display:flex;flex-direction:column;
   align-items:center;gap:16px}
 .screen>*{width:100%;max-width:440px;flex:none;box-sizing:border-box}
+/* back to the landing page with all the apps */
+.screen>.allapps{width:auto;align-self:flex-start;margin:0 0 4px 2px;display:inline-block;padding:5px 14px 4px;
+  border:3px solid var(--ink);border-radius:999px;background:var(--bg);color:var(--ink);text-decoration:none;
+  font-family:var(--display);font-weight:800;font-size:15px;line-height:1.2;box-shadow:3px 4px 0 var(--ink)}
+.screen>.allapps:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
 .screen>h1{width:auto;align-self:flex-start;margin:0 0 6px 2px;font-family:"Bagel Fat One",var(--display);font-weight:400;
   font-size:clamp(46px,15.5vw,72px);line-height:1.1;white-space:nowrap;letter-spacing:.01em;color:var(--pink);
   -webkit-text-stroke:7px var(--ink);paint-order:stroke fill;text-shadow:5px 6px 0 var(--ink);rotate:-4deg}
@@ -160,6 +165,7 @@ ul{list-style:none;margin:0;padding:0}
 <body>
 
 <section class="screen" id="start">
+  <a class="allapps" href="https://rebecaesquivel.com">← All apps</a>
   <h1>Word Pop</h1>
   <div class="topics">Topics <span>Scroll for more</span></div>
   <div class="modes" id="modes" tabindex="0" aria-label="Topics"></div>
